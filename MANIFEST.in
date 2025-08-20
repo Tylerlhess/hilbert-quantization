@@ -1,0 +1,48 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include pyproject.toml
+include hilbert_quantization/py.typed
+
+# Include documentation
+recursive-include docs *.md *.rst *.txt *.py
+recursive-include docs *.png *.jpg *.svg
+
+# Include examples
+recursive-include examples *.py *.md *.txt
+
+# Include tests (for source distribution)
+recursive-include tests *.py
+
+# Exclude development and build files
+exclude .gitignore
+exclude .pre-commit-config.yaml
+exclude tox.ini
+exclude Makefile
+exclude verify_install.py
+recursive-exclude * __pycache__
+recursive-exclude * *.py[cod]
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+exclude *_test.py
+exclude *_benchmark.py
+exclude *_demo.py
+exclude benchmark_*
+exclude test_*
+exclude demo_*
+exclude simple_*
+exclude *_results.md
+exclude *_report.txt
+prune .git
+prune .github
+prune .pytest_cache
+prune .mypy_cache
+prune .kiro
+prune build
+prune dist
+prune *.egg-info
+prune quantized_models
+prune quantized_embeddings
+prune large_scale_embeddings
+prune billion_scale_embeddings
+prune embedding_search_test
