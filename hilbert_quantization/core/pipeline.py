@@ -18,6 +18,7 @@ from ..exceptions import HilbertQuantizationError
 from .dimension_calculator import PowerOf4DimensionCalculator
 from .hilbert_mapper import HilbertCurveMapper as HilbertMapperImpl
 from .index_generator import HierarchicalIndexGeneratorImpl
+
 from .compressor import MPEGAICompressorImpl
 from ..config import CompressionConfig
 
@@ -38,7 +39,8 @@ class QuantizationPipeline:
                  hilbert_mapper: Optional[HilbertCurveMapper] = None,
                  index_generator: Optional[HierarchicalIndexGenerator] = None,
                  compressor: Optional[MPEGAICompressor] = None,
-                 compression_config: Optional[CompressionConfig] = None):
+                 compression_config: Optional[CompressionConfig] = None,
+                 use_streaming_optimization: bool = True):
         """
         Initialize the quantization pipeline with components.
         
@@ -48,12 +50,23 @@ class QuantizationPipeline:
             index_generator: Hierarchical index generator
             compressor: MPEG-AI compressor implementation
             compression_config: Configuration for compression
+            use_streaming_optimization: Whether to use streaming optimization for large models
         """
         self.dimension_calculator = dimension_calculator or PowerOf4DimensionCalculator()
         self.hilbert_mapper = hilbert_mapper or HilbertMapperImpl()
-        self.index_generator = index_generator or HierarchicalIndexGeneratorImpl()
+        
+        # Use streaming-enabled index generator if requested and no specific generator provided
+        if use_streaming_optimization and index_generator is None:
+            # Create config with streaming optimization enabled
+            from ..config import QuantizationConfig
+            streaming_config = QuantizationConfig(use_streaming_optimization=True)
+            self.index_generator = HierarchicalIndexGeneratorImpl(streaming_config)
+        else:
+            self.index_generator = index_generator or HierarchicalIndexGeneratorImpl()
+        
         self.compressor = compressor or MPEGAICompressorImpl(compression_config)
         self.compression_config = compression_config or CompressionConfig()
+        self.use_streaming_optimization = use_streaming_optimization
         
     def quantize_model(self,
                       parameters: np.ndarray,
@@ -95,19 +108,32 @@ class QuantizationPipeline:
             # Pad parameters if necessary
             padded_parameters = self._pad_parameters(parameters, dimensions, padding_config)
             
-            # Map to 2D
-            image_2d = self.hilbert_mapper.map_to_2d(padded_parameters, dimensions)
-            
-            logger.debug(f"Mapped to 2D image shape: {image_2d.shape}")
-            
-            # Step 3: Generate hierarchical indices
-            logger.debug("Step 3: Generating hierarchical indices")
+            # Step 3: Generate 2D mapping and hierarchical indices
             index_space_size = dimensions[0]  # Use width as index space
-            hierarchical_indices = self.index_generator.generate_optimized_indices(
-                image_2d, index_space_size
-            )
             
-            logger.debug(f"Generated {len(hierarchical_indices)} hierarchical indices")
+            # Use integrated mapping approach if streaming optimization is available
+            if (self.use_streaming_optimization and 
+                hasattr(self.index_generator, 'generate_indices_with_integrated_mapping')):
+                
+                logger.debug("Step 2-3: Using integrated mapping and index generation")
+                image_2d, hierarchical_indices = self.index_generator.generate_indices_with_integrated_mapping(
+                    padded_parameters, dimensions, index_space_size
+                )
+                logger.debug(f"Integrated approach: 2D image shape {image_2d.shape}, "
+                           f"{len(hierarchical_indices)} hierarchical indices")
+            else:
+                # Fall back to traditional separate mapping and index generation
+                logger.debug("Step 2-3: Using traditional separate mapping and index generation")
+                
+                # Map to 2D
+                image_2d = self.hilbert_mapper.map_to_2d(padded_parameters, dimensions)
+                logger.debug(f"Mapped to 2D image shape: {image_2d.shape}")
+                
+                # Generate hierarchical indices
+                hierarchical_indices = self.index_generator.generate_optimized_indices(
+                    image_2d, index_space_size
+                )
+                logger.debug(f"Generated {len(hierarchical_indices)} hierarchical indices")
             
             # Step 4: Embed indices in image
             logger.debug("Step 4: Embedding indices in image")
@@ -268,6 +294,33 @@ class QuantizationPipeline:
                 'mae': float('inf'),
                 'max_error': float('inf')
             }
+    
+    def _get_2d_representation(self, parameters: np.ndarray) -> np.ndarray:
+        """
+        Get the 2D representation of parameters for pre-computed indexing.
+        
+        Args:
+            parameters: 1D array of model parameters
+            
+        Returns:
+            2D numpy array representation
+        """
+        try:
+            # Calculate optimal dimensions
+            dimensions = self.dimension_calculator.calculate_optimal_dimensions(len(parameters))
+            padding_config = self.dimension_calculator.calculate_padding_strategy(len(parameters), dimensions)
+            
+            # Pad parameters if necessary
+            padded_parameters = self._pad_parameters(parameters, dimensions, padding_config)
+            
+            # Map to 2D using Hilbert curve
+            image_2d = self.hilbert_mapper.map_to_2d(padded_parameters, dimensions)
+            
+            return image_2d
+            
+        except Exception as e:
+            logger.error(f"Failed to get 2D representation: {e}")
+            raise HilbertQuantizationError(f"Failed to get 2D representation: {e}")
     
     def _pad_parameters(self, parameters: np.ndarray, dimensions: Tuple[int, int], 
                        padding_config) -> np.ndarray:

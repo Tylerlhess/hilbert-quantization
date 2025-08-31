@@ -2,11 +2,12 @@
 Hierarchical index generator implementation for optimized spatial indexing.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import numpy as np
 import math
 
 from ..interfaces import HierarchicalIndexGenerator
+from ..config import QuantizationConfig
 
 
 class HierarchicalIndexGeneratorImpl(HierarchicalIndexGenerator):
@@ -15,7 +16,20 @@ class HierarchicalIndexGeneratorImpl(HierarchicalIndexGenerator):
     
     Uses a 1/2, 1/4, 1/8 strategy to allocate index space across different granularity levels,
     starting with finest granularity for maximum discrimination power.
+    
+    Supports both traditional spatial averaging and streaming index generation.
     """
+    
+    def __init__(self, config: Optional[QuantizationConfig] = None):
+        """Initialize with optional configuration."""
+        self.config = config or QuantizationConfig()
+        
+        # Initialize streaming generator if enabled
+        if getattr(self.config, 'use_streaming_optimization', False):
+            from .streaming_index_builder import StreamingHilbertIndexGenerator
+            self._streaming_generator = StreamingHilbertIndexGenerator()
+        else:
+            self._streaming_generator = None
     
     def calculate_level_allocation(self, total_space: int) -> List[Tuple[int, int]]:
         """
@@ -289,6 +303,15 @@ class HierarchicalIndexGeneratorImpl(HierarchicalIndexGenerator):
         if image.size == 0 or index_space_size <= 0:
             return np.array([])
         
+        # Use streaming approach if enabled
+        if getattr(self.config, 'use_streaming_optimization', False) and self._streaming_generator is not None:
+            return self._streaming_generator.generate_optimized_indices(image, index_space_size)
+        
+        # Traditional approach
+        return self._generate_traditional_indices(image, index_space_size)
+    
+    def _generate_traditional_indices(self, image: np.ndarray, index_space_size: int) -> np.ndarray:
+        """Generate indices using traditional spatial averaging approach."""
         # Calculate optimal space allocation
         allocations = self.calculate_level_allocation(index_space_size)
         

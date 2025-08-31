@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hilbert-quantization"
-version = "1.0.0"
+version = "1.2.0"
 description = "Ultra-fast similarity search with Hilbert curve quantization and MPEG-AI compression"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -65,13 +65,18 @@ gpu = [
     "cupy-cuda11x>=9.0.0; platform_machine=='x86_64'",
     "numba>=0.56.0",
 ]
+huggingface = [
+    "transformers>=4.20.0",
+    "torch>=1.12.0",
+    "huggingface_hub>=0.10.0",
+]
 
 [project.urls]
-Homepage = "https://github.com/Tylerlhess/hilbert-quantization"
-Documentation = "https://hilbert-quantization.readthedocs.io"
-Repository = "https://github.com/Tylerlhess/hilbert-quantization"
-"Bug Tracker" = "https://github.com/Tylerlhess/hilbert-quantization/issues"
-Changelog = "https://github.com/Tylerlhess/hilbert-quantization/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/tylerlhess/hilbert-quantization"
+Documentation = "https://github.com/tylerlhess/hilbert-quantization#readme"
+Repository = "https://github.com/tylerlhess/hilbert-quantization"
+"Bug Tracker" = "https://github.com/tylerlhess/hilbert-quantization/issues"
+Changelog = "https://github.com/tylerlhess/hilbert-quantization/blob/main/CHANGELOG.md"
 
 [project.scripts]
 hilbert-benchmark = "hilbert_quantization.cli:benchmark_cli"

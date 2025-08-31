@@ -51,3 +51,28 @@ class QuantizationError(HilbertQuantizationError):
 class ReconstructionError(HilbertQuantizationError):
     """Raised when reconstruction process fails."""
     pass
+
+
+class GeneratorTreeError(HilbertQuantizationError):
+    """Raised when generator tree operations fail."""
+    pass
+
+
+class GeneratorDepthLimitError(GeneratorTreeError):
+    """Raised when generator tree exceeds maximum depth limit."""
+    pass
+
+
+class GeneratorMemoryError(GeneratorTreeError):
+    """Raised when generator tree operations exceed memory constraints."""
+    pass
+
+
+class GeneratorStateError(GeneratorTreeError):
+    """Raised when generator state is inconsistent or invalid."""
+    pass
+
+
+class GeneratorOptimizationError(HilbertQuantizationError):
+    """Raised when generator-based optimization fails."""
+    pass

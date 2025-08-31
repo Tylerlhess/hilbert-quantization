@@ -528,4 +528,629 @@ print(f"Compression ratios: {comparison['model1_compression']:.3f}, {comparison[
    - Check candidate pool size
    - Verify index granularity settings
 
+## Video-Enhanced Features
+
+### VideoHilbertQuantizer
+
+The `VideoHilbertQuantizer` extends the standard `HilbertQuantizer` with video-based storage and search capabilities, providing improved compression ratios and faster similarity search through temporal coherence analysis.
+
+```python
+from hilbert_quantization.video_api import VideoHilbertQuantizer
+
+# Initialize with video storage
+quantizer = VideoHilbertQuantizer(
+    storage_dir="my_video_db",
+    frame_rate=30.0,
+    video_codec='mp4v',
+    max_frames_per_video=10000,
+    enable_video_storage=True
+)
+```
+
+#### Key Methods
+
+**quantize_and_store()** - Quantize and optionally store in video format:
+```python
+# Quantize and store in video format
+quantized_model, frame_metadata = quantizer.quantize_and_store(
+    parameters=model_params,
+    model_id="transformer_layer_1",
+    description="First transformer layer weights",
+    store_in_video=True
+)
+
+print(f"Stored as frame {frame_metadata.frame_index}")
+print(f"Video path: {frame_metadata.video_path}")
+```
+
+**video_search()** - Search using video-enhanced algorithms:
+```python
+# Search with different methods
+results = quantizer.video_search(
+    query_parameters=query_params,
+    max_results=10,
+    search_method='hybrid',  # 'video_features', 'hierarchical', or 'hybrid'
+    use_temporal_coherence=True,
+    similarity_threshold=0.1
+)
+
+# Process video search results
+for result in results:
+    print(f"Model: {result.frame_metadata.model_id}")
+    print(f"Overall similarity: {result.similarity_score:.3f}")
+    print(f"Video similarity: {result.video_similarity_score:.3f}")
+    print(f"Hierarchical similarity: {result.hierarchical_similarity_score:.3f}")
+    print(f"Temporal coherence: {result.temporal_coherence_score:.3f}")
+    print(f"Search method: {result.search_method}")
+```
+
+**compare_search_methods()** - Compare different search approaches:
+```python
+# Compare all available search methods
+comparison = quantizer.compare_search_methods(
+    query_parameters=query_params,
+    max_results=10
+)
+
+# Analyze performance differences
+for method, stats in comparison['methods'].items():
+    if 'error' not in stats:
+        print(f"{method}:")
+        print(f"  Search time: {stats['search_time']:.3f}s")
+        print(f"  Results found: {stats['result_count']}")
+        print(f"  Avg similarity: {stats['avg_similarity']:.3f}")
+        print(f"  Method type: {stats['method_type']}")
+```
+
+**get_video_storage_info()** - Get comprehensive storage statistics:
+```python
+info = quantizer.get_video_storage_info()
+print(f"Video storage enabled: {info['video_storage_enabled']}")
+print(f"Total videos: {info['storage_statistics']['total_videos']}")
+print(f"Total frames: {info['storage_statistics']['total_frames']}")
+print(f"Average compression ratio: {info['storage_statistics']['avg_compression_ratio']:.2f}")
+```
+
+#### Search Method Options
+
+The video-enhanced search engine supports multiple search methods:
+
+1. **'video_features'** - Uses computer vision algorithms:
+   - ORB keypoint detection and matching
+   - Template matching for structural similarity
+   - Histogram comparison for color/intensity patterns
+   - Structural similarity (SSIM) for perceptual similarity
+
+2. **'hierarchical'** - Uses embedded hierarchical indices:
+   - Fast progressive filtering from coarse to fine granularity
+   - Optimized space allocation across multiple levels
+   - Spatial locality preservation from Hilbert curve mapping
+
+3. **'hybrid'** - Combines both approaches (recommended):
+   - Initial filtering using hierarchical indices (65% weight)
+   - Detailed comparison using video features (35% weight)
+   - Optional temporal coherence analysis for neighboring frames
+
+#### Temporal Coherence Analysis
+
+When enabled, temporal coherence analysis examines relationships between frames in the same video:
+
+```python
+# Enable temporal coherence for improved accuracy
+results = quantizer.video_search(
+    query_parameters=query_params,
+    search_method='hybrid',
+    use_temporal_coherence=True
+)
+
+# Temporal coherence scores indicate frame neighborhood similarity
+for result in results:
+    if result.temporal_coherence_score > 0.7:
+        print(f"Strong temporal coherence: {result.temporal_coherence_score:.3f}")
+```
+
+### VideoBatchQuantizer
+
+For processing multiple models efficiently with video storage:
+
+```python
+from hilbert_quantization.video_api import VideoBatchQuantizer
+
+batch_quantizer = VideoBatchQuantizer(
+    storage_dir="batch_video_storage",
+    enable_video_storage=True
+)
+
+# Batch quantization with video storage
+parameter_sets = [model1_params, model2_params, model3_params]
+model_ids = ["model_1", "model_2", "model_3"]
+
+quantized_models, frame_metadata_list = batch_quantizer.quantize_batch_to_video(
+    parameter_sets=parameter_sets,
+    model_ids=model_ids,
+    store_in_video=True
+)
+```
+
+### Convenience Functions
+
+```python
+from hilbert_quantization.video_api import (
+    create_video_quantizer,
+    quantize_model_to_video,
+    video_search_similar_models
+)
+
+# Quick video quantizer creation
+quantizer = create_video_quantizer(storage_dir="quick_storage")
+
+# Single model quantization and storage
+quantized_model, frame_metadata = quantize_model_to_video(
+    parameters=model_params,
+    model_id="quick_model"
+)
+
+# Direct similarity search
+results = video_search_similar_models(
+    query_parameters=query_params,
+    storage_dir="quick_storage",
+    search_method='hybrid'
+)
+```
+
+## Hugging Face Integration
+
+### HuggingFaceParameterExtractor
+
+Extract parameters from Hugging Face models with stratified sampling and comprehensive metadata:
+
+```python
+from hilbert_quantization.huggingface_integration import HuggingFaceParameterExtractor
+
+extractor = HuggingFaceParameterExtractor(cache_dir="./hf_cache")
+
+# Extract parameters with filtering and sampling
+result = extractor.extract_model_parameters(
+    model_name="bert-base-uncased",
+    max_params=100000,
+    include_embeddings=True,
+    include_attention=True,
+    include_mlp=True,
+    stratified_sampling=True
+)
+
+print(f"Extracted {len(result.parameters)} parameters")
+print(f"Model type: {result.metadata.model_type}")
+print(f"Architecture: {result.metadata.architecture}")
+print(f"Hidden size: {result.metadata.hidden_size}")
+print(f"Layers: {result.metadata.num_layers}")
+print(f"Sampling applied: {result.sampling_applied}")
+```
+
+#### Layer Filtering Options
+
+Control which layers to include in parameter extraction:
+
+```python
+# Include only attention layers
+attention_result = extractor.extract_model_parameters(
+    model_name="gpt2",
+    include_embeddings=False,
+    include_attention=True,
+    include_mlp=False
+)
+
+# Include only MLP/feed-forward layers
+mlp_result = extractor.extract_model_parameters(
+    model_name="gpt2",
+    include_embeddings=False,
+    include_attention=False,
+    include_mlp=True
+)
+```
+
+#### Stratified Sampling
+
+When parameter counts exceed limits, stratified sampling maintains representativeness:
+
+```python
+# Extract with stratified sampling to maintain layer proportions
+sampled_result = extractor.extract_model_parameters(
+    model_name="microsoft/DialoGPT-large",
+    max_params=50000,
+    stratified_sampling=True  # Maintains proportional representation
+)
+
+# Check sampling information
+extraction_info = sampled_result.extraction_info
+print(f"Original parameters: {extraction_info['original_parameter_count']}")
+print(f"Final parameters: {extraction_info['final_parameter_count']}")
+print(f"Layer counts: {extraction_info['layer_counts']}")
+```
+
+### HuggingFaceVideoEncoder
+
+Complete workflow for encoding Hugging Face models to video format with registry tracking:
+
+```python
+from hilbert_quantization.huggingface_integration import HuggingFaceVideoEncoder
+
+encoder = HuggingFaceVideoEncoder(
+    cache_dir="./hf_cache",
+    registry_path="hf_models/registry.json",
+    video_storage_path="hf_models/videos"
+)
+
+# Encode model to video format
+encoding_result = encoder.encode_model_to_video(
+    model_name="distilbert-base-uncased",
+    max_params=100000,
+    compression_quality=0.85
+)
+
+print(f"Model ID: {encoding_result['model_id']}")
+print(f"Encoding time: {encoding_result['encoding_time']:.2f}s")
+print(f"Compression ratio: {encoding_result['compression_ratio']:.2f}")
+print(f"Video frame: {encoding_result['video_frame_info']['frame_index']}")
+```
+
+#### Model Similarity Search
+
+Search for similar models using various methods:
+
+```python
+# Search by model ID
+similar_models = encoder.search_similar_models(
+    query_model="distilbert_base_uncased",
+    max_results=5,
+    search_method="hybrid",
+    architecture_filter="DistilBertModel"
+)
+
+# Search by parameter features
+query_params = np.random.randn(50000).astype(np.float32)
+feature_results = encoder.search_similar_models(
+    query_model=query_params,
+    max_results=10,
+    search_method="features"
+)
+
+# Process search results
+for result in similar_models:
+    print(f"Model: {result['model_name']}")
+    print(f"Similarity: {result['similarity_score']:.3f}")
+    print(f"Architecture: {result['model_metadata']['architecture']}")
+    print(f"Parameters: {result['model_metadata']['total_parameters']:,}")
+    print(f"Encoding time: {result['encoding_statistics']['encoding_time']:.2f}s")
+```
+
+#### Model Registry Management
+
+```python
+# Get model information
+model_info = encoder.get_model_info("bert_base_uncased")
+if model_info:
+    print(f"Model: {model_info['model_name']}")
+    print(f"Registration: {model_info['registration_timestamp']}")
+    print(f"Access count: {model_info['access_count']}")
+    print(f"Tags: {model_info['tags']}")
+
+# List registered models with filtering
+models = encoder.list_registered_models(
+    architecture_filter="BertModel",
+    min_parameters=50000,
+    max_parameters=200000
+)
+
+for model in models:
+    print(f"{model['model_name']}: {model['total_parameters']:,} params")
+```
+
+### Convenience Functions
+
+```python
+from hilbert_quantization.huggingface_integration import (
+    extract_huggingface_parameters,
+    get_huggingface_model_info
+)
+
+# Quick parameter extraction
+result = extract_huggingface_parameters(
+    model_name="roberta-base",
+    max_params=75000
+)
+
+# Quick model info
+info = get_huggingface_model_info("gpt2")
+print(f"GPT-2 has {info.total_parameters:,} parameters")
+```
+
+## Streaming Processing
+
+### MemoryEfficientParameterStreamer
+
+Process large models without loading them entirely into memory:
+
+```python
+from hilbert_quantization.core.streaming_processor import (
+    MemoryEfficientParameterStreamer,
+    StreamingConfig
+)
+
+# Configure streaming processor
+config = StreamingConfig(
+    chunk_size=2048,
+    max_memory_mb=2048.0,
+    enable_progress=True,
+    adaptive_chunk_sizing=True,
+    target_layers=['attention', 'mlp'],  # Filter specific layer types
+    parallel_processing=True,
+    enable_chunk_encoding=True,  # Encode chunks as video frames
+    chunk_video_storage_dir="streaming_chunks"
+)
+
+streamer = MemoryEfficientParameterStreamer(config)
+
+# Stream model parameters
+model_name = "microsoft/DialoGPT-large"
+max_params = 1000000
+
+for chunk_array, chunk_metadata, progress in streamer.stream_model_parameters(
+    model_name=model_name,
+    max_total_params=max_params
+):
+    # Process each chunk
+    print(f"Chunk {chunk_metadata.chunk_id}: {len(chunk_array)} parameters")
+    print(f"Layer: {chunk_metadata.layer_name} ({chunk_metadata.layer_type})")
+    print(f"Progress: {progress.progress_percent:.1f}%")
+    print(f"Rate: {progress.processing_rate:.0f} params/sec")
+    print(f"Memory: {progress.memory_usage_mb:.1f}MB")
+    
+    # Chunk is automatically encoded as video frame if enabled
+    if chunk_metadata.video_path:
+        print(f"Encoded to: {chunk_metadata.video_path}, frame {chunk_metadata.frame_index}")
+```
+
+#### Layer Filtering
+
+Control which layers to process during streaming:
+
+```python
+# Process only attention layers
+attention_config = StreamingConfig(
+    target_layers=['attention'],
+    exclude_layers=['embedding', 'output']
+)
+
+# Process with custom filter function
+def custom_filter(layer_name):
+    return 'transformer' in layer_name and 'bias' not in layer_name
+
+custom_config = StreamingConfig(
+    target_layers=None,  # Use custom function instead
+    exclude_layers=None
+)
+
+streamer = MemoryEfficientParameterStreamer(custom_config)
+```
+
+#### Memory Management
+
+The streaming processor includes adaptive memory management:
+
+```python
+# Configure memory limits and adaptive sizing
+memory_config = StreamingConfig(
+    chunk_size=1024,
+    max_memory_mb=1024.0,
+    adaptive_chunk_sizing=True,
+    min_chunk_size=256,
+    max_chunk_size=4096
+)
+
+# Monitor memory usage during streaming
+streamer = MemoryEfficientParameterStreamer(memory_config)
+
+# Get streaming statistics
+stats = streamer.get_streaming_statistics()
+print(f"Memory usage: {stats['memory_usage_mb']:.1f}MB")
+print(f"Current chunk size: {stats['chunk_size']}")
+print(f"Processing rate: {stats['processing_rate']:.0f} params/sec")
+```
+
+#### Chunk Encoding
+
+When enabled, parameter chunks are encoded as video frames for efficient storage:
+
+```python
+# Enable chunk encoding
+encoding_config = StreamingConfig(
+    enable_chunk_encoding=True,
+    chunk_video_storage_dir="encoded_chunks",
+    chunk_frame_rate=30.0,
+    chunk_video_codec='mp4v',
+    max_chunks_per_video=1000
+)
+
+streamer = MemoryEfficientParameterStreamer(encoding_config)
+
+# Stream with automatic chunk encoding
+for chunk_array, chunk_metadata, progress in streamer.stream_model_parameters(
+    model_name="gpt2",
+    max_total_params=500000
+):
+    # Each chunk is automatically encoded as a video frame
+    if chunk_metadata.video_path:
+        print(f"Chunk {chunk_metadata.chunk_id} encoded to video frame")
+        print(f"Video: {chunk_metadata.video_path}")
+        print(f"Frame: {chunk_metadata.frame_index}")
+        print(f"Hierarchical indices: {len(chunk_metadata.hierarchical_indices)} values")
+```
+
+#### Error Recovery
+
+The streaming processor includes comprehensive error recovery:
+
+```python
+try:
+    for chunk_array, chunk_metadata, progress in streamer.stream_model_parameters(
+        model_name="very-large-model",
+        max_total_params=10000000
+    ):
+        # Process chunks...
+        pass
+except Exception as e:
+    # Attempt error recovery
+    recovery_result = streamer.recover_from_streaming_error(e)
+    print(f"Recovery actions: {recovery_result}")
+    
+    # Retry failed chunk encoding if needed
+    if streamer.chunk_encoder:
+        retry_result = streamer.retry_failed_chunk_encoding()
+        print(f"Retry results: {retry_result}")
+```
+
+### Model Size Estimation
+
+Estimate model parameters without loading the full model:
+
+```python
+# Estimate model size before streaming
+estimated_size = streamer.estimate_model_size("microsoft/DialoGPT-large")
+print(f"Estimated parameters: {estimated_size:,}")
+
+# Use estimation for planning
+if estimated_size > 1000000:
+    # Use smaller chunks for very large models
+    config.chunk_size = 512
+    config.max_memory_mb = 4096.0
+```
+
+### Layer Analysis
+
+Analyze layer composition before streaming:
+
+```python
+# Get layer filtering statistics
+layer_stats = streamer.get_layer_filtering_statistics("bert-base-uncased")
+
+print(f"Total layers: {layer_stats['total_layers']}")
+print(f"Filtered layers: {layer_stats['filtered_layers']}")
+print(f"Filter ratio: {layer_stats['filter_ratio']:.2f}")
+print(f"Layer types: {layer_stats['all_layer_types']}")
+print(f"Filtered types: {layer_stats['filtered_layer_types']}")
+```
+
+## Complete Workflow Examples
+
+### Video-Enhanced Model Database
+
+```python
+from hilbert_quantization.video_api import VideoHilbertQuantizer
+from hilbert_quantization.huggingface_integration import HuggingFaceVideoEncoder
+
+# Create video-enhanced quantizer
+quantizer = VideoHilbertQuantizer(
+    storage_dir="model_database",
+    enable_video_storage=True
+)
+
+# Create Hugging Face encoder
+hf_encoder = HuggingFaceVideoEncoder(
+    video_storage_path="model_database/hf_models"
+)
+
+# Encode multiple Hugging Face models
+models_to_encode = [
+    "bert-base-uncased",
+    "distilbert-base-uncased", 
+    "roberta-base",
+    "gpt2"
+]
+
+for model_name in models_to_encode:
+    try:
+        result = hf_encoder.encode_model_to_video(
+            model_name=model_name,
+            max_params=100000,
+            compression_quality=0.8
+        )
+        print(f"Encoded {model_name}: {result['compression_ratio']:.2f}x compression")
+    except Exception as e:
+        print(f"Failed to encode {model_name}: {e}")
+
+# Search for similar models
+query_model = "bert-base-uncased"
+similar_models = hf_encoder.search_similar_models(
+    query_model=query_model,
+    max_results=3,
+    search_method="hybrid"
+)
+
+print(f"\nModels similar to {query_model}:")
+for result in similar_models:
+    print(f"  {result['model_name']}: {result['similarity_score']:.3f}")
+```
+
+### Large Model Streaming Pipeline
+
+```python
+from hilbert_quantization.core.streaming_processor import (
+    MemoryEfficientParameterStreamer,
+    StreamingConfig
+)
+from hilbert_quantization.video_api import VideoHilbertQuantizer
+
+# Configure for large model processing
+streaming_config = StreamingConfig(
+    chunk_size=1024,
+    max_memory_mb=2048.0,
+    adaptive_chunk_sizing=True,
+    target_layers=['attention', 'mlp'],
+    enable_chunk_encoding=True,
+    chunk_video_storage_dir="large_model_chunks"
+)
+
+# Initialize components
+streamer = MemoryEfficientParameterStreamer(streaming_config)
+quantizer = VideoHilbertQuantizer(storage_dir="large_models")
+
+# Process large model in chunks
+model_name = "microsoft/DialoGPT-large"
+processed_chunks = []
+
+print(f"Processing {model_name} in streaming mode...")
+
+for chunk_array, chunk_metadata, progress in streamer.stream_model_parameters(
+    model_name=model_name,
+    max_total_params=2000000
+):
+    # Quantize each chunk
+    chunk_quantized = quantizer.quantize(
+        chunk_array,
+        model_id=f"{model_name}_chunk_{chunk_metadata.chunk_id}",
+        validate=False  # Skip validation for performance
+    )
+    
+    processed_chunks.append(chunk_quantized)
+    
+    # Log progress every 10 chunks
+    if chunk_metadata.chunk_id % 10 == 0:
+        print(f"  Processed {progress.processed_parameters:,} parameters "
+              f"({progress.progress_percent:.1f}%) "
+              f"Rate: {progress.processing_rate:.0f} params/sec")
+
+print(f"Completed processing: {len(processed_chunks)} chunks")
+
+# Search across processed chunks
+query_chunk = processed_chunks[0]
+similar_chunks = quantizer.search(
+    query_chunk.hierarchical_indices,
+    candidate_models=processed_chunks[1:],
+    max_results=5
+)
+
+print(f"Found {len(similar_chunks)} similar chunks")
+```
+
 For more detailed examples and advanced usage patterns, see the `examples/api_usage_examples.py` file.

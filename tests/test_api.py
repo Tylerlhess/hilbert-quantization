@@ -38,21 +38,19 @@ class TestHilbertQuantizer:
     def mock_quantized_model(self):
         """Create a mock quantized model."""
         return QuantizedModel(
-            model_id="test_model",
             compressed_data=b"mock_compressed_data",
             original_dimensions=(32, 32),
             parameter_count=1000,
+            compression_quality=0.8,
             hierarchical_indices=np.random.randn(32),
             metadata=ModelMetadata(
-                compression_quality=0.8,
-                created_at="2024-01-01T00:00:00",
-                description="Test model",
-                compression_metrics=CompressionMetrics(
-                    compression_ratio=0.5,
-                    original_size=4000,
-                    compressed_size=2000,
-                    reconstruction_error=0.01
-                )
+                model_name="test_model",
+                original_size_bytes=4000,
+                compressed_size_bytes=2000,
+                compression_ratio=0.5,
+                quantization_timestamp="2025-08-29T00:00:00",
+                model_architecture="test_architecture",
+                additional_info={"description": "Test model"}
             )
         )
     
@@ -75,7 +73,7 @@ class TestHilbertQuantizer:
         """Test successful quantization."""
         # Setup mock
         mock_pipeline = Mock()
-        mock_pipeline.quantize.return_value = mock_quantized_model
+        mock_pipeline.quantize_model.return_value = mock_quantized_model
         mock_pipeline_class.return_value = mock_pipeline
         
         # Test quantization
@@ -84,7 +82,7 @@ class TestHilbertQuantizer:
         assert result == mock_quantized_model
         assert len(quantizer._model_registry) == 1
         assert quantizer._model_registry[0] == mock_quantized_model
-        mock_pipeline.quantize.assert_called_once()
+        mock_pipeline.quantize_model.assert_called_once()
     
     def test_quantize_with_list_input(self, quantizer):
         """Test quantization with list input."""

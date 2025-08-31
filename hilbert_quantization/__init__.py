@@ -27,7 +27,7 @@ Example:
     >>> results = quantizer.search(query, [quantized], max_results=5)
 """
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 __author__ = "Hilbert Quantization Contributors"
 __email__ = "support@example.com"
 __license__ = "MIT"
@@ -40,6 +40,31 @@ from .api import (
     reconstruct_model,
     search_similar_models,
 )
+
+# Video-enhanced API imports
+from .video_api import (
+    VideoHilbertQuantizer,
+    VideoBatchQuantizer,
+    create_video_quantizer,
+    quantize_model_to_video,
+    video_search_similar_models,
+)
+
+# Streaming index generator for memory-efficient processing
+from .core.streaming_index_builder import StreamingHilbertIndexGenerator
+
+# Hugging Face integration (optional import)
+try:
+    from .huggingface_integration import (
+        HuggingFaceParameterExtractor,
+        HuggingFaceModelMetadata,
+        ParameterExtractionResult,
+        extract_huggingface_parameters,
+        get_huggingface_model_info,
+    )
+    _HUGGINGFACE_AVAILABLE = True
+except ImportError:
+    _HUGGINGFACE_AVAILABLE = False
 
 # Configuration imports
 from .config import (
@@ -96,6 +121,16 @@ __all__ = [
     "reconstruct_model", 
     "search_similar_models",
     
+    # Video-enhanced API
+    "VideoHilbertQuantizer",
+    "VideoBatchQuantizer", 
+    "create_video_quantizer",
+    "quantize_model_to_video",
+    "video_search_similar_models",
+    
+    # Streaming generators
+    "StreamingHilbertIndexGenerator",
+    
     # Configuration
     "SystemConfig",
     "CompressionConfig",
@@ -127,6 +162,16 @@ if _OPTIMIZED_AVAILABLE:
         "UltraFastHierarchicalSearch",
     ])
 
+# Add Hugging Face components if available
+if _HUGGINGFACE_AVAILABLE:
+    __all__.extend([
+        "HuggingFaceParameterExtractor",
+        "HuggingFaceModelMetadata",
+        "ParameterExtractionResult",
+        "extract_huggingface_parameters",
+        "get_huggingface_model_info",
+    ])
+
 
 def get_version() -> str:
     """Get the current version string."""
@@ -141,6 +186,11 @@ def get_version_info() -> tuple:
 def is_optimized_available() -> bool:
     """Check if optimized components are available."""
     return _OPTIMIZED_AVAILABLE
+
+
+def is_huggingface_available() -> bool:
+    """Check if Hugging Face integration is available."""
+    return _HUGGINGFACE_AVAILABLE
 
 
 # Package-level configuration

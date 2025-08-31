@@ -1,0 +1,22 @@
+# Complete requirements for Hilbert Quantization with Video Features and Hugging Face support
+
+# Core dependencies (from original requirements.txt)
+numpy>=1.21.0
+Pillow>=8.0.0
+
+# Video features dependencies
+opencv-python>=4.5.0
+
+# Hugging Face model support
+transformers>=4.20.0
+torch>=1.12.0
+
+# Optional: Additional ML libraries for advanced use cases
+# scikit-learn>=1.0.0  # For additional similarity metrics
+# matplotlib>=3.5.0    # For visualization
+# tqdm>=4.64.0         # For progress bars
+
+# Development dependencies (optional)
+# pytest>=7.0.0
+# black>=22.0.0
+# isort>=5.10.0

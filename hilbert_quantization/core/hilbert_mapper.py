@@ -2,10 +2,13 @@
 Hilbert curve mapping implementation for parameter quantization.
 """
 
-from typing import List, Tuple
+from typing import List, Tuple, Optional, TYPE_CHECKING
 import numpy as np
 from ..interfaces import HilbertCurveMapper as IHilbertCurveMapper
 from ..exceptions import HilbertQuantizationError
+
+if TYPE_CHECKING:
+    pass
 
 
 class HilbertCurveMapper(IHilbertCurveMapper):
@@ -109,13 +112,15 @@ class HilbertCurveMapper(IHilbertCurveMapper):
         
         return x, y
     
-    def map_to_2d(self, parameters: np.ndarray, dimensions: Tuple[int, int]) -> np.ndarray:
+    def map_to_2d(self, parameters: np.ndarray, dimensions: Tuple[int, int], 
+                  builder: Optional = None) -> np.ndarray:
         """
         Map 1D parameters to 2D using Hilbert curve ordering.
         
         Args:
             parameters: 1D array of parameters
             dimensions: Target 2D dimensions (width, height)
+            builder: Optional builder (GeneratorTreeBuilder or StreamingIndexBuilder) for simultaneous index building
             
         Returns:
             2D array representation
@@ -143,12 +148,28 @@ class HilbertCurveMapper(IHilbertCurveMapper):
         # Generate Hilbert curve coordinates
         coordinates = self.generate_hilbert_coordinates(width)
         
+        # Reset builder if provided
+        if builder is not None and hasattr(builder, 'reset'):
+            builder.reset()
+        
         # Map parameters to 2D using Hilbert curve ordering
+        # Simultaneously build indices if builder is provided
         for i, param_value in enumerate(parameters):
             if i >= len(coordinates):
                 break
             x, y = coordinates[i]
             result[y, x] = param_value
+            
+            # Add parameter to builder during mapping
+            # This preserves spatial locality as adjacent Hilbert positions
+            # are processed sequentially
+            if builder is not None:
+                if hasattr(builder, 'add_parameter_value'):
+                    # Generator tree builder
+                    builder.add_parameter_value(float(param_value))
+                elif hasattr(builder, 'add_value'):
+                    # Streaming index builder
+                    builder.add_value(float(param_value))
         
         return result
     
@@ -182,3 +203,5 @@ class HilbertCurveMapper(IHilbertCurveMapper):
             parameters.append(image[y, x])
         
         return np.array(parameters, dtype=image.dtype)
+    
+

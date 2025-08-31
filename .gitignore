@@ -155,5 +155,21 @@ embedding_search_test/
 test_data/
 benchmark_results/
 
+# Video and model storage files
+hf_model_videos/
+streaming_hf_models/
+qwen_coder_30b/
+*.mp4
+*.json
+model_storage_*.mp4
+*_cache.json
+*_registry.json
+
+# Generated images and plots
+*.png
+*.jpg
+*.jpeg
+*.gif
+
 # Kiro IDE
 .kiro/

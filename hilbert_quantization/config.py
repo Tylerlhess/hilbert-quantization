@@ -51,6 +51,12 @@ class QuantizationConfig:
     max_index_levels: int = 9
     enable_offset_sampling: bool = True
     
+    # Streaming index optimization settings
+    use_streaming_optimization: bool = False  # Enable streaming approach
+    enable_integrated_mapping: bool = True    # Single-pass processing
+    streaming_max_levels: int = 10           # Maximum hierarchical levels
+    memory_efficient_mode: bool = True       # Optimize for memory usage
+    
     # Validation settings
     validate_spatial_locality: bool = True
     preserve_parameter_count: bool = True
@@ -90,6 +96,17 @@ class QuantizationConfig:
         
         # Sort levels in descending order for optimal filtering
         self.index_granularity_levels = sorted(self.index_granularity_levels, reverse=True)
+        
+        # Validate streaming optimization settings
+        self._validate_streaming_settings()
+    
+    def _validate_streaming_settings(self):
+        """Validate streaming index optimization settings."""
+        if self.streaming_max_levels < 1:
+            raise ValueError("Streaming max levels must be at least 1")
+        
+        if self.streaming_max_levels > 15:
+            raise ValueError("Streaming max levels cannot exceed 15 (performance constraints)")
 
 
 @dataclass

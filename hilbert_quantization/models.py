@@ -17,6 +17,7 @@ class ModelMetadata:
     quantization_timestamp: str
     model_architecture: Optional[str] = None
     additional_info: Optional[Dict[str, Any]] = None
+    compression_metrics: Optional['CompressionMetrics'] = None
 
 
 @dataclass
@@ -61,6 +62,11 @@ class QuantizedModel:
     hierarchical_indices: np.ndarray
     metadata: ModelMetadata
     
+    @property
+    def model_id(self) -> str:
+        """Get the model ID from metadata."""
+        return self.metadata.model_name
+    
     def __post_init__(self):
         """Validate quantized model data."""
         if self.parameter_count <= 0:
@@ -90,6 +96,40 @@ class CompressionMetrics:
             raise ValueError("Compression ratio must be positive")
         if self.reconstruction_error < 0:
             raise ValueError("Reconstruction error must be non-negative")
+
+
+@dataclass
+class OptimizationMetrics:
+    """
+    Performance metrics for generator-based vs traditional index generation.
+    
+    Tracks timing, memory usage, and accuracy metrics to enable automatic
+    fallback decisions and performance monitoring.
+    """
+    traditional_calculation_time: float
+    generator_based_time: float
+    memory_usage_reduction: float
+    accuracy_comparison: float
+    traditional_memory_mb: float = 0.0
+    generator_memory_mb: float = 0.0
+    speedup_ratio: float = 1.0
+    optimization_successful: bool = True
+    fallback_reason: Optional[str] = None
+    
+    def __post_init__(self):
+        """Calculate derived metrics after initialization."""
+        if self.traditional_calculation_time > 0:
+            self.speedup_ratio = self.traditional_calculation_time / max(self.generator_based_time, 1e-6)
+        
+        if self.traditional_memory_mb > 0:
+            self.memory_usage_reduction = (self.traditional_memory_mb - self.generator_memory_mb) / self.traditional_memory_mb
+        
+        # Determine if optimization was successful
+        self.optimization_successful = (
+            self.speedup_ratio > 1.0 and 
+            self.accuracy_comparison > 0.95 and 
+            self.memory_usage_reduction >= 0
+        )
 
 
 @dataclass
