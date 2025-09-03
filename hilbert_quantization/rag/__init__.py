@@ -24,8 +24,11 @@ from .models import (
 )
 
 from .config import RAGConfig
+from .api import RAGSystem
 
 __all__ = [
+    'RAGSystem',
+    'RAGConfig',
     'DocumentChunker',
     'EmbeddingGenerator', 
     'MultiLevelHierarchicalIndexGenerator',
@@ -37,6 +40,5 @@ __all__ = [
     'VideoFrameMetadata',
     'DualVideoStorageMetadata',
     'DocumentSearchResult',
-    'ProcessingProgress',
-    'RAGConfig'
+    'ProcessingProgress'
 ]
