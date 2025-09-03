@@ -5,9 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/Tylerlhess/hilbert-quantization/workflows/Tests/badge.svg)](https://github.com/tylerlhess/hilbert-quantization/actions)
 
-**Ultra-fast similarity search with 6x compression and competitive performance**
+**Ultra-fast RAG system with 6x compression and competitive performance**
 
-Hilbert Quantization is a high-performance similarity search library that combines Hilbert curve mapping with MPEG-AI compression to deliver both speed and storage efficiency. It's designed for applications where both search performance and storage costs matter.
+Hilbert Quantization is a high-performance Retrieval-Augmented Generation (RAG) system that combines Hilbert curve mapping with MPEG-AI compression to deliver both speed and storage efficiency. It's designed for building efficient RAG applications where both search performance and storage costs matter.
 
 ## 🆕 **New in v1.3.0: Complete RAG System**
 
@@ -20,13 +20,14 @@ Hilbert Quantization is a high-performance similarity search library that combin
 - **Document Validation**: Comprehensive validation with metadata verification and content analysis
 - **End-to-End Pipeline**: Complete workflow from document ingestion to search results
 
-## 🚀 Key Features
+## 🚀 Key RAG Features
 
-- **⚡ Ultra-fast search**: Sub-millisecond to few-millisecond search times
-- **💾 6x compression**: Massive storage savings compared to traditional methods
-- **🏆 Competitive performance**: Matches industry leaders like Pinecone and FAISS
-- **📈 Scalable**: Better performance on larger datasets
-- **🔧 Easy to use**: Simple API with sensible defaults
+- **📚 Complete RAG Pipeline**: Document processing, embedding generation, and similarity search
+- **⚡ Ultra-fast retrieval**: Sub-millisecond to few-millisecond search times
+- **💾 6x compression**: Massive storage savings for document embeddings
+- **🎬 Video-enhanced storage**: Advanced temporal coherence for better compression
+- **📊 Document validation**: Comprehensive quality checks and metadata management
+- **🔧 Easy to use**: Simple RAG API with sensible defaults
 - **🐍 Pure Python**: No external dependencies beyond NumPy
 
 ## 📊 Performance Comparison
@@ -64,35 +65,41 @@ pip install hilbert-quantization[dev,benchmark,gpu]
 
 ## 🚀 Quick Start
 
-### Basic Usage
+### Simple RAG System Setup
 
 ```python
-import numpy as np
-from hilbert_quantization import HilbertQuantizer
+from hilbert_quantization.rag import RAGSystem, RAGConfig
 
-# Initialize quantizer
-quantizer = HilbertQuantizer()
+# Initialize RAG system with default settings
+config = RAGConfig(
+    chunk_size=512,
+    overlap_size=50,
+    embedding_dimension=1024
+)
 
-# Create some example embeddings
-embeddings = [
-    np.random.normal(0, 1, 1024).astype(np.float32) 
-    for _ in range(10000)
+rag_system = RAGSystem(config)
+
+# Add documents to your RAG system
+documents = [
+    "Machine learning is a subset of artificial intelligence that focuses on algorithms.",
+    "Natural language processing enables computers to understand human language.",
+    "Computer vision allows machines to interpret and understand visual information."
 ]
 
-# Quantize embeddings (one-time setup)
-quantized_models = []
-for i, embedding in enumerate(embeddings):
-    quantized = quantizer.quantize(embedding, model_id=f"doc_{i}")
-    quantized_models.append(quantized)
+# Process and store documents
+for i, doc in enumerate(documents):
+    rag_system.add_document(f"doc_{i}", doc)
 
-# Search for similar embeddings
-query = np.random.normal(0, 1, 1024).astype(np.float32)
-results = quantizer.search(query, quantized_models, max_results=5)
+# Search for relevant information
+query = "What is machine learning?"
+results = rag_system.search(query, max_results=3)
 
-# Print results
+# Display results
 for result in results:
-    print(f"Model: {result.model.metadata.model_name}")
+    print(f"Document: {result.document_id}")
     print(f"Similarity: {result.similarity_score:.3f}")
+    print(f"Content: {result.content}")
+    print("---")
 ```
 
 ### 📚 RAG System Usage

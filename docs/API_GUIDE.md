@@ -1,86 +1,116 @@
-# Hilbert Quantization API Guide
+# Hilbert Quantization RAG API Guide
 
-This guide provides comprehensive documentation for the Hilbert Quantization system's high-level API.
+This guide provides comprehensive documentation for the Hilbert Quantization RAG system's API.
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Core Classes](#core-classes)
-3. [Configuration](#configuration)
-4. [Basic Operations](#basic-operations)
-5. [Advanced Features](#advanced-features)
-6. [Error Handling](#error-handling)
-7. [Performance Optimization](#performance-optimization)
-8. [Examples](#examples)
+1. [RAG Quick Start](#rag-quick-start)
+2. [RAG Core Classes](#rag-core-classes)
+3. [Document Processing](#document-processing)
+4. [Embedding Generation](#embedding-generation)
+5. [Search and Retrieval](#search-and-retrieval)
+6. [Video Storage](#video-storage)
+7. [Validation and Monitoring](#validation-and-monitoring)
+8. [Core API (Legacy)](#core-api-legacy)
 
-## Quick Start
+## RAG Quick Start
 
-### Installation and Basic Usage
+### Basic RAG System Setup
 
 ```python
-import numpy as np
-from hilbert_quantization.api import HilbertQuantizer
+from hilbert_quantization.rag import RAGSystem, RAGConfig
 
-# Create quantizer with default settings
-quantizer = HilbertQuantizer()
+# Create RAG system with default settings
+config = RAGConfig(
+    chunk_size=512,
+    overlap_size=50,
+    embedding_dimension=1024
+)
 
-# Quantize model parameters
-parameters = np.random.randn(1000).astype(np.float32)
-quantized_model = quantizer.quantize(parameters, model_id="my_model")
+rag_system = RAGSystem(config)
 
-# Search for similar models
-query_params = np.random.randn(1000).astype(np.float32)
-results = quantizer.search(query_params, max_results=5)
+# Add documents to your knowledge base
+documents = [
+    "Machine learning is a subset of artificial intelligence.",
+    "Natural language processing enables computers to understand human language."
+]
 
-# Reconstruct parameters
-reconstructed = quantizer.reconstruct(quantized_model)
+for i, doc in enumerate(documents):
+    rag_system.add_document(f"doc_{i}", doc)
+
+# Search for relevant information
+results = rag_system.search("What is machine learning?", max_results=5)
+
+for result in results:
+    print(f"Document: {result.document_id}")
+    print(f"Similarity: {result.similarity_score:.3f}")
+    print(f"Content: {result.content}")
 ```
 
-### Convenience Functions
-
-For simple operations, use the convenience functions:
+### Advanced RAG Setup
 
 ```python
-from hilbert_quantization.api import quantize_model, reconstruct_model, search_similar_models
+from hilbert_quantization.rag.document_processing import BatchDocumentProcessor
+from hilbert_quantization.rag.embedding_generation import EmbeddingGenerator
+from hilbert_quantization.rag.search import ProgressiveSearchEngine
 
-# Simple quantization
-quantized = quantize_model(parameters)
+# Initialize components
+batch_processor = BatchDocumentProcessor(parallel_workers=4)
+embedding_generator = EmbeddingGenerator(dimension=1024, use_compression=True)
+search_engine = ProgressiveSearchEngine(use_frame_caching=True)
 
-# Simple reconstruction
-reconstructed = reconstruct_model(quantized)
+# Process documents in batch
+documents = [{"id": f"doc_{i}", "content": f"Document {i} content..."} for i in range(100)]
+processed_docs = batch_processor.process_documents(documents)
 
-# Simple search
-results = search_similar_models(query_params, [quantized])
+# Generate embeddings
+for doc in processed_docs:
+    for chunk in doc.chunks:
+        chunk.embedding = embedding_generator.generate_embedding(chunk.content)
+
+# Add to search engine
+for doc in processed_docs:
+    search_engine.add_document(doc)
+
+# Search
+results = search_engine.search("your query", max_results=10)
 ```
 
-## Core Classes
+## RAG Core Classes
 
-### HilbertQuantizer
+### RAGSystem
 
-The main API class providing quantization, search, and reconstruction operations.
+The main RAG system class providing document management and search operations.
 
 ```python
-class HilbertQuantizer:
-    def __init__(self, config: Optional[SystemConfig] = None)
-    def quantize(self, parameters, model_id=None, description=None, validate=True) -> QuantizedModel
-    def reconstruct(self, quantized_model, validate=True) -> np.ndarray
-    def search(self, query_parameters, candidate_models=None, max_results=None, similarity_threshold=None) -> List[SearchResult]
+class RAGSystem:
+    def __init__(self, config: RAGConfig)
+    def add_document(self, document_id: str, content: str) -> ProcessedDocument
+    def add_processed_document(self, document: ProcessedDocument) -> None
+    def search(self, query: str, max_results: int = 10) -> List[SearchResult]
+    def get_statistics(self) -> Dict[str, Any]
+    def validate_system(self) -> ValidationResult
 ```
 
 **Key Features:**
-- Automatic model registry management
-- Comprehensive error handling and validation
-- Configurable compression and search parameters
-- Built-in performance monitoring
+- Automatic document chunking and processing
+- Video-enhanced storage with compression
+- Progressive search with multiple algorithms
+- Built-in validation and performance monitoring
 
-### BatchQuantizer
+### RAGConfig
 
-Optimized for processing multiple models efficiently.
+Configuration class for RAG system settings.
 
 ```python
-class BatchQuantizer:
-    def quantize_batch(self, parameter_sets, model_ids=None, descriptions=None, parallel=True) -> List[QuantizedModel]
-    def search_batch(self, query_sets, candidate_models, max_results=10) -> List[List[SearchResult]]
+class RAGConfig:
+    chunk_size: int = 512
+    overlap_size: int = 50
+    embedding_dimension: int = 1024
+    use_video_storage: bool = True
+    compression_quality: float = 0.85
+    max_frames_per_video: int = 1000
+    enable_validation: bool = True
 ```
 
 ## Configuration

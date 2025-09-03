@@ -1,17 +1,31 @@
 """
-Hilbert Quantization - Ultra-fast similarity search with compression
+Hilbert Quantization - Ultra-fast RAG system with compression
 
-A high-performance similarity search library that combines Hilbert curve mapping 
-with MPEG-AI compression to deliver both speed and storage efficiency.
+A high-performance Retrieval-Augmented Generation (RAG) system that combines 
+Hilbert curve mapping with MPEG-AI compression to deliver both speed and storage efficiency.
 
-Key Features:
-- Ultra-fast search (sub-millisecond to few-millisecond)
-- 6x compression ratio
-- Competitive with industry leaders (Pinecone, FAISS)
-- Scalable performance on larger datasets
+Key RAG Features:
+- Complete document processing pipeline
+- Ultra-fast retrieval (sub-millisecond to few-millisecond)
+- 6x compression ratio for embeddings
+- Video-enhanced storage with temporal coherence
+- Document validation and quality checks
 - Pure Python with NumPy
 
-Example:
+RAG Example:
+    >>> from hilbert_quantization.rag import RAGSystem, RAGConfig
+    >>> 
+    >>> # Initialize RAG system
+    >>> config = RAGConfig(chunk_size=512, embedding_dimension=1024)
+    >>> rag_system = RAGSystem(config)
+    >>> 
+    >>> # Add documents
+    >>> rag_system.add_document("doc_1", "Machine learning is a subset of AI.")
+    >>> 
+    >>> # Search for relevant content
+    >>> results = rag_system.search("What is machine learning?", max_results=5)
+
+Core API Example:
     >>> import numpy as np
     >>> from hilbert_quantization import HilbertQuantizer
     >>> 
