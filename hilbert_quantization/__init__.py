@@ -27,7 +27,7 @@ Example:
     >>> results = quantizer.search(query, [quantized], max_results=5)
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __author__ = "Hilbert Quantization Contributors"
 __email__ = "support@example.com"
 __license__ = "MIT"
@@ -94,6 +94,9 @@ from .exceptions import (
     ValidationError,
 )
 
+# RAG system imports
+from . import rag
+
 # Optimized components (optional import)
 try:
     from .optimized import (
@@ -130,6 +133,9 @@ __all__ = [
     
     # Streaming generators
     "StreamingHilbertIndexGenerator",
+    
+    # RAG system
+    "rag",
     
     # Configuration
     "SystemConfig",

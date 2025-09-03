@@ -88,14 +88,14 @@ class TestHilbertQuantizer:
         """Test quantization with list input."""
         parameters_list = [1.0, 2.0, 3.0, 4.0] * 250  # 1000 parameters
         
-        with patch.object(quantizer, 'quantization_pipeline') as mock_pipeline:
+        with patch.object(quantizer, '_quantization_pipeline') as mock_pipeline:
             mock_model = Mock()
-            mock_pipeline.quantize.return_value = mock_model
+            mock_pipeline.quantize_model.return_value = mock_model
             
             result = quantizer.quantize(parameters_list)
             
             # Verify numpy array conversion
-            call_args = mock_pipeline.quantize.call_args[0]
+            call_args = mock_pipeline.quantize_model.call_args[0]
             assert isinstance(call_args[0], np.ndarray)
             assert call_args[0].dtype == np.float32
     

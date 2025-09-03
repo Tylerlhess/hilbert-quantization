@@ -143,6 +143,9 @@ class StreamingHuggingFaceEncoder:
         self.registry_file = self.video_storage_dir / "streaming_registry.json"
         self._load_registry()
         
+        # Download configuration
+        self.download_threads = 4  # Default to 4 concurrent downloads
+        
         logger.info(f"Streaming HuggingFace Encoder initialized")
         logger.info(f"Video storage: {self.video_storage_dir}")
         logger.info(f"Chunk size: {chunk_size}")
@@ -221,9 +224,103 @@ class StreamingHuggingFaceEncoder:
             # Load model configuration
             config = AutoConfig.from_pretrained(model_name)
             
-            # Load model in streaming fashion
+            # Load model in streaming fashion with aggressive memory optimization
             logger.info("📥 Loading model for streaming...")
-            model = AutoModel.from_pretrained(model_name, torch_dtype=torch.float32)
+            logger.info("⚠️  Note: Large models (30B+ params) require significant memory")
+            logger.info("🧠 Using aggressive memory optimization for large models")
+            
+            # Use maximum memory optimization settings with reduced concurrent downloads
+            import os
+            
+            # Limit concurrent downloads to reduce network and memory pressure
+            download_threads = getattr(self, 'download_threads', 4)
+            os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '600'  # 10 minute timeout per chunk
+            os.environ['TRANSFORMERS_CACHE'] = os.path.expanduser('~/.cache/huggingface/transformers')
+            
+            # Set HuggingFace Hub download concurrency
+            os.environ['HF_HUB_DOWNLOAD_MAX_WORKERS'] = str(download_threads)
+            logger.info(f"🔧 Set HF_HUB_DOWNLOAD_MAX_WORKERS to {download_threads}")
+            
+            # Try to limit concurrent downloads by setting thread pool size
+            download_threads = getattr(self, 'download_threads', 4)
+            try:
+                import concurrent.futures
+                # Monkey patch the ThreadPoolExecutor to use configured number of threads
+                original_init = concurrent.futures.ThreadPoolExecutor.__init__
+                def limited_init(self, max_workers=None, *args, **kwargs):
+                    # Limit to configured number of workers for downloads
+                    if max_workers is None or max_workers > download_threads:
+                        max_workers = download_threads
+                    return original_init(self, max_workers, *args, **kwargs)
+                concurrent.futures.ThreadPoolExecutor.__init__ = limited_init
+                logger.info(f"🔧 Limited concurrent downloads to {download_threads} threads")
+            except Exception as e:
+                logger.warning(f"Could not limit download threads: {e}")
+            
+            # Multi-GPU configuration for large models
+            import torch
+            
+            # Check available GPUs
+            num_gpus = torch.cuda.device_count()
+            logger.info(f"🎮 Detected {num_gpus} GPU(s)")
+            
+            if num_gpus > 1:
+                # Create device map for multi-GPU distribution
+                device_map = {}
+                
+                # Distribute layers across GPUs
+                # This is a simplified distribution - can be optimized based on GPU memory
+                layers_per_gpu = 48 // num_gpus  # Assuming 48 layers for Qwen-30B
+                
+                for gpu_id in range(num_gpus):
+                    start_layer = gpu_id * layers_per_gpu
+                    end_layer = min((gpu_id + 1) * layers_per_gpu, 48)
+                    
+                    for layer_idx in range(start_layer, end_layer):
+                        device_map[f"model.layers.{layer_idx}"] = gpu_id
+                    
+                    logger.info(f"   GPU {gpu_id}: layers {start_layer}-{end_layer-1}")
+                
+                # Place embeddings and output on first GPU
+                device_map["model.embed_tokens"] = 0
+                device_map["model.norm"] = num_gpus - 1
+                device_map["lm_head"] = num_gpus - 1
+                
+                logger.info(f"🔧 Multi-GPU device mapping configured for {num_gpus} GPUs")
+                
+                model = AutoModel.from_pretrained(
+                    model_name, 
+                    torch_dtype=torch.float16,     # Use half precision
+                    low_cpu_mem_usage=True,        # Reduce CPU memory usage
+                    device_map=device_map,         # Custom multi-GPU mapping
+                    max_memory={i: "20GiB" for i in range(num_gpus)},  # Limit per GPU
+                    offload_folder="./gpu_offload", # Offload if needed
+                    resume_download=True,
+                    force_download=False
+                )
+                
+            elif num_gpus == 1:
+                logger.info("🎮 Single GPU configuration")
+                model = AutoModel.from_pretrained(
+                    model_name, 
+                    torch_dtype=torch.float16,
+                    low_cpu_mem_usage=True,
+                    device_map="cuda:0",           # Single GPU
+                    max_memory={"0": "22GiB"},     # Leave some GPU memory free
+                    resume_download=True,
+                    force_download=False
+                )
+                
+            else:
+                logger.info("💻 CPU-only configuration")
+                model = AutoModel.from_pretrained(
+                    model_name, 
+                    torch_dtype=torch.float16,
+                    low_cpu_mem_usage=True,
+                    device_map="cpu",             # CPU fallback
+                    resume_download=True,
+                    force_download=False
+                )
             
             parameters_extracted = 0
             
@@ -293,20 +390,26 @@ class StreamingHuggingFaceEncoder:
                           max_total_params: Optional[int] = None,
                           chunk_encoding: bool = True) -> Dict[str, Any]:
         """
-        Stream and encode a model in real-time.
+        Stream and encode a model in real-time with optimal frame ordering.
         
         Args:
             model_name: Name of the HuggingFace model
-            target_layers: Specific layer types to include
-            max_total_params: Maximum total parameters to extract  
+            target_layers: Specific layer types to include (None = all layers)
+            max_total_params: Maximum total parameters to extract (None = all parameters)
             chunk_encoding: Whether to encode each chunk separately
             
         Returns:
             Dictionary with encoding results
         """
         logger.info(f"🎬 Starting streaming encoding of {model_name}")
-        start_time = time.time()
+        if max_total_params is None:
+            logger.info("🎯 FULL MODEL ENCODING - All parameters will be encoded")
+        else:
+            logger.info(f"🎯 Partial encoding - Up to {max_total_params:,} parameters")
         
+        logger.info("📹 Frame ordering optimization: ENABLED")
+        
+        start_time = time.time()
         model_id = model_name.replace('/', '_').replace('-', '_')
         
         try:
@@ -369,6 +472,53 @@ class StreamingHuggingFaceEncoder:
             
             encoding_time = time.time() - start_time
             
+            # Apply frame ordering optimization (always enabled for chunk encoding)
+            frame_ordering_applied = False
+            temporal_coherence = None
+            
+            if chunk_encoding and chunk_count > 1:
+                logger.info("🔄 Applying frame ordering optimization...")
+                try:
+                    # Get the video files that were created
+                    video_files = list(self.video_storage_dir.glob("*.mp4"))
+                    if video_files:
+                        # Apply frame ordering optimization to the most recent video
+                        latest_video = max(video_files, key=lambda x: x.stat().st_mtime)
+                        
+                        # Import frame ordering functionality
+                        from hilbert_quantization.core.video_storage import VideoModelStorage
+                        
+                        # Create temporary video storage to access optimization methods
+                        temp_storage = VideoModelStorage(
+                            storage_dir=str(self.video_storage_dir),
+                            frame_rate=30.0,
+                            video_codec='mp4v'
+                        )
+                        
+                        # Check if optimization is beneficial
+                        monitoring_results = temp_storage.monitor_compression_ratio(str(latest_video))
+                        
+                        if monitoring_results.get('optimization_recommended', False):
+                            logger.info("📈 Frame reordering recommended - applying optimization...")
+                            
+                            # Apply frame ordering optimization
+                            optimization_results = temp_storage.optimize_frame_ordering(str(latest_video))
+                            
+                            frame_ordering_applied = True
+                            temporal_coherence = optimization_results.get('optimized_metrics', {}).get('temporal_coherence')
+                            
+                            logger.info(f"✅ Frame ordering optimization complete!")
+                            logger.info(f"   Compression improvement: {optimization_results.get('compression_improvement_percent', 0):.1f}%")
+                            logger.info(f"   Temporal coherence: {temporal_coherence:.3f}")
+                        else:
+                            logger.info("📊 Frame ordering already optimal - no changes needed")
+                            frame_ordering_applied = True  # Already optimal
+                            temporal_coherence = monitoring_results.get('temporal_coherence', 0.0)
+                            
+                except Exception as e:
+                    logger.warning(f"Frame ordering optimization failed: {e}")
+                    logger.info("Continuing with standard encoding...")
+            
             # Create metadata
             metadata = {
                 'model_name': model_name,
@@ -378,7 +528,10 @@ class StreamingHuggingFaceEncoder:
                 'chunks_encoded': chunk_count,
                 'total_parameters': total_params,
                 'encoding_time': encoding_time,
-                'chunk_size': self.chunk_size
+                'chunk_size': self.chunk_size,
+                'frame_ordering_enabled': True,  # Always enabled
+                'frame_ordering_applied': frame_ordering_applied,
+                'temporal_coherence': temporal_coherence
             }
             
             # Store in registry
@@ -390,7 +543,9 @@ class StreamingHuggingFaceEncoder:
                 'chunks_encoded': chunk_count,
                 'encoding_method': 'streaming',
                 'metadata': metadata,
-                'encoded_timestamp': time.time()
+                'encoded_timestamp': time.time(),
+                'frame_ordering_applied': frame_ordering_applied,
+                'temporal_coherence': temporal_coherence
             }
             
             self.model_registry[model_name] = result

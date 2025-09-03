@@ -6,7 +6,7 @@ power-of-4 dimensions for parameter mapping and calculate padding strategies.
 """
 
 import math
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Any
 import numpy as np
 
 from ..interfaces import DimensionCalculator
@@ -20,7 +20,8 @@ class PowerOf4DimensionCalculator(DimensionCalculator):
     
     This implementation finds the smallest power of 4 that can accommodate
     the given parameter count and calculates an efficient padding strategy
-    to minimize wasted space.
+    to minimize wasted space. Specifically optimized for embedding dimensions
+    in RAG systems using Hilbert curve mapping.
     """
     
     def __init__(self, min_efficiency_ratio: float = Constants.MIN_EFFICIENCY_RATIO):
@@ -201,6 +202,109 @@ class PowerOf4DimensionCalculator(DimensionCalculator):
                     valid_dimensions.append(dims)
         
         return valid_dimensions
+    
+    def find_optimal_embedding_dimensions(self, embedding_size: int) -> Tuple[int, int]:
+        """
+        Find optimal power-of-4 dimensions specifically for embedding vectors.
+        
+        This method is optimized for embedding dimensions in RAG systems,
+        ensuring efficient Hilbert curve mapping while minimizing wasted space.
+        
+        Args:
+            embedding_size: Size of embedding vector (e.g., 384, 768, 1536)
+            
+        Returns:
+            Optimal (width, height) dimensions for embedding mapping
+            
+        Raises:
+            ValueError: If embedding_size is not positive
+        """
+        if embedding_size <= 0:
+            raise ValueError("Embedding size must be positive")
+        
+        return self.calculate_optimal_dimensions(embedding_size)
+    
+    def calculate_embedding_padding_strategy(self, embedding_size: int, 
+                                           target_dims: Tuple[int, int] = None) -> PaddingConfig:
+        """
+        Calculate optimal padding strategy specifically for embedding vectors.
+        
+        If target_dims is not provided, automatically calculates optimal dimensions.
+        Optimized for embedding space efficiency in RAG systems.
+        
+        Args:
+            embedding_size: Size of embedding vector
+            target_dims: Optional target dimensions (auto-calculated if None)
+            
+        Returns:
+            PaddingConfig optimized for embedding vectors
+            
+        Raises:
+            ValueError: If embedding_size is invalid or dimensions insufficient
+        """
+        if embedding_size <= 0:
+            raise ValueError("Embedding size must be positive")
+        
+        if target_dims is None:
+            target_dims = self.find_optimal_embedding_dimensions(embedding_size)
+        
+        return self.calculate_padding_strategy(embedding_size, target_dims)
+    
+    def get_embedding_efficiency_analysis(self, embedding_size: int) -> Dict[str, Any]:
+        """
+        Provide comprehensive efficiency analysis for embedding dimensions.
+        
+        Analyzes multiple power-of-4 options and provides recommendations
+        for optimal embedding storage in RAG systems.
+        
+        Args:
+            embedding_size: Size of embedding vector
+            
+        Returns:
+            Dictionary with detailed efficiency analysis and recommendations
+        """
+        if embedding_size <= 0:
+            raise ValueError("Embedding size must be positive")
+        
+        analysis = {
+            'embedding_size': embedding_size,
+            'optimal_dimensions': self.find_optimal_embedding_dimensions(embedding_size),
+            'alternatives': [],
+            'recommendations': []
+        }
+        
+        # Analyze multiple valid options
+        valid_options = self.find_all_valid_dimensions(embedding_size, max_waste_percentage=75.0)
+        
+        for dims in valid_options[:5]:  # Limit to top 5 options
+            metrics = self.get_efficiency_metrics(embedding_size, dims)
+            padding_config = self.calculate_padding_strategy(embedding_size, dims)
+            
+            option = {
+                'dimensions': dims,
+                'total_space': metrics['total_space'],
+                'efficiency_ratio': metrics['efficiency_ratio'],
+                'waste_percentage': metrics['waste_percentage'],
+                'padding_positions_count': len(padding_config.padding_positions)
+            }
+            analysis['alternatives'].append(option)
+        
+        # Generate recommendations
+        optimal_metrics = self.get_efficiency_metrics(embedding_size, analysis['optimal_dimensions'])
+        
+        if optimal_metrics['efficiency_ratio'] >= 0.8:
+            analysis['recommendations'].append("Excellent efficiency - recommended for production use")
+        elif optimal_metrics['efficiency_ratio'] >= 0.6:
+            analysis['recommendations'].append("Good efficiency - suitable for most applications")
+        elif optimal_metrics['efficiency_ratio'] >= 0.4:
+            analysis['recommendations'].append("Moderate efficiency - consider larger embedding size if possible")
+        else:
+            analysis['recommendations'].append("Low efficiency - consider alternative embedding dimensions")
+        
+        if optimal_metrics['waste_percentage'] > 50:
+            analysis['recommendations'].append("High waste percentage - consider using smaller power-of-4 if acceptable")
+        
+        return analysis
 
 
 def validate_power_of_4(value: int) -> bool:

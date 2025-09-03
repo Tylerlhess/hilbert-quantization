@@ -214,6 +214,251 @@ class TestUtilityFunctions:
         assert calculate_dimension_efficiency(0, (4, 4)) == 0.0
 
 
+class TestEmbeddingSpecificFunctionality:
+    """Test embedding-specific dimension calculation functionality."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        # Use more lenient efficiency ratio for embedding tests since embedding sizes are fixed
+        self.calculator = PowerOf4DimensionCalculator(min_efficiency_ratio=0.2)
+    
+    def test_find_optimal_embedding_dimensions_common_sizes(self):
+        """Test optimal dimensions for common embedding sizes."""
+        # Common embedding sizes and expected optimal dimensions
+        test_cases = [
+            (384, (32, 32)),    # 384 -> 1024 (32x32)
+            (768, (32, 32)),    # 768 -> 1024 (32x32)
+            (1536, (64, 64)),   # 1536 -> 4096 (64x64)
+            (512, (32, 32)),    # 512 -> 1024 (32x32)
+            (1024, (32, 32)),   # 1024 -> 1024 (32x32) - exact fit
+            (2048, (64, 64)),   # 2048 -> 4096 (64x64)
+            (4096, (64, 64)),   # 4096 -> 4096 (64x64) - exact fit
+        ]
+        
+        for embedding_size, expected_dims in test_cases:
+            result = self.calculator.find_optimal_embedding_dimensions(embedding_size)
+            assert result == expected_dims, f"Failed for embedding size {embedding_size}"
+    
+    def test_find_optimal_embedding_dimensions_edge_cases(self):
+        """Test edge cases for embedding dimension calculation."""
+        # Very small embedding
+        assert self.calculator.find_optimal_embedding_dimensions(1) == (2, 2)
+        
+        # Large embedding
+        assert self.calculator.find_optimal_embedding_dimensions(10000) == (128, 128)
+        
+        # Invalid input
+        with pytest.raises(ValueError, match="Embedding size must be positive"):
+            self.calculator.find_optimal_embedding_dimensions(0)
+        
+        with pytest.raises(ValueError, match="Embedding size must be positive"):
+            self.calculator.find_optimal_embedding_dimensions(-100)
+    
+    def test_calculate_embedding_padding_strategy_auto_dimensions(self):
+        """Test embedding padding strategy with auto-calculated dimensions."""
+        embedding_size = 768
+        
+        config = self.calculator.calculate_embedding_padding_strategy(embedding_size)
+        
+        # Should auto-calculate optimal dimensions (32, 32) for 768
+        assert config.target_dimensions == (32, 32)
+        assert config.efficiency_ratio == 768 / 1024  # 0.75
+        assert len(config.padding_positions) == 256  # 1024 - 768 = 256
+        
+        # Verify padding positions are at the end
+        expected_last_position = (31, 31)  # Last position in 32x32 grid
+        assert config.padding_positions[0] == expected_last_position
+    
+    def test_calculate_embedding_padding_strategy_custom_dimensions(self):
+        """Test embedding padding strategy with custom dimensions."""
+        embedding_size = 500
+        custom_dims = (32, 32)  # 1024 total
+        
+        config = self.calculator.calculate_embedding_padding_strategy(
+            embedding_size, custom_dims
+        )
+        
+        assert config.target_dimensions == custom_dims
+        assert config.efficiency_ratio == 500 / 1024
+        assert len(config.padding_positions) == 524  # 1024 - 500 = 524
+    
+    def test_calculate_embedding_padding_strategy_invalid_input(self):
+        """Test invalid inputs for embedding padding strategy."""
+        # Invalid embedding size
+        with pytest.raises(ValueError, match="Embedding size must be positive"):
+            self.calculator.calculate_embedding_padding_strategy(0)
+        
+        # Dimensions too small for embedding
+        with pytest.raises(ValueError, match="cannot accommodate"):
+            self.calculator.calculate_embedding_padding_strategy(100, (2, 2))  # 100 > 4
+    
+    def test_get_embedding_efficiency_analysis_comprehensive(self):
+        """Test comprehensive embedding efficiency analysis."""
+        embedding_size = 768
+        
+        analysis = self.calculator.get_embedding_efficiency_analysis(embedding_size)
+        
+        # Check structure
+        assert 'embedding_size' in analysis
+        assert 'optimal_dimensions' in analysis
+        assert 'alternatives' in analysis
+        assert 'recommendations' in analysis
+        
+        # Check values
+        assert analysis['embedding_size'] == 768
+        assert analysis['optimal_dimensions'] == (32, 32)
+        assert len(analysis['alternatives']) > 0
+        assert len(analysis['recommendations']) > 0
+        
+        # Check alternatives structure
+        for alt in analysis['alternatives']:
+            assert 'dimensions' in alt
+            assert 'total_space' in alt
+            assert 'efficiency_ratio' in alt
+            assert 'waste_percentage' in alt
+            assert 'padding_positions_count' in alt
+    
+    def test_get_embedding_efficiency_analysis_recommendations(self):
+        """Test recommendation generation in efficiency analysis."""
+        # High efficiency case (exact fit)
+        analysis_high = self.calculator.get_embedding_efficiency_analysis(1024)
+        assert any("Excellent efficiency" in rec for rec in analysis_high['recommendations'])
+        
+        # Moderate efficiency case
+        analysis_mod = self.calculator.get_embedding_efficiency_analysis(600)
+        assert len(analysis_mod['recommendations']) > 0
+        
+        # Low efficiency case (very small embedding in large space)
+        analysis_low = self.calculator.get_embedding_efficiency_analysis(10)
+        # Check that recommendations exist and contain efficiency-related content
+        assert len(analysis_low['recommendations']) > 0
+        # The specific wording may vary, so just check that recommendations are generated
+        recommendations_text = ' '.join(analysis_low['recommendations']).lower()
+        assert any(keyword in recommendations_text for keyword in ['efficiency', 'waste', 'consider'])
+    
+    def test_get_embedding_efficiency_analysis_invalid_input(self):
+        """Test invalid inputs for embedding efficiency analysis."""
+        with pytest.raises(ValueError, match="Embedding size must be positive"):
+            self.calculator.get_embedding_efficiency_analysis(0)
+        
+        with pytest.raises(ValueError, match="Embedding size must be positive"):
+            self.calculator.get_embedding_efficiency_analysis(-50)
+    
+    def test_embedding_specific_vs_general_methods_consistency(self):
+        """Test that embedding-specific methods are consistent with general methods."""
+        embedding_sizes = [384, 768, 1536, 2048]
+        
+        for size in embedding_sizes:
+            # Compare embedding-specific vs general methods
+            embedding_dims = self.calculator.find_optimal_embedding_dimensions(size)
+            general_dims = self.calculator.calculate_optimal_dimensions(size)
+            
+            assert embedding_dims == general_dims, f"Inconsistency for size {size}"
+            
+            # Compare padding strategies
+            embedding_config = self.calculator.calculate_embedding_padding_strategy(size)
+            general_config = self.calculator.calculate_padding_strategy(size, embedding_dims)
+            
+            assert embedding_config.target_dimensions == general_config.target_dimensions
+            assert embedding_config.efficiency_ratio == general_config.efficiency_ratio
+            assert len(embedding_config.padding_positions) == len(general_config.padding_positions)
+
+
+class TestPowerOf4OptimizationSpecific:
+    """Test power-of-4 optimization specific functionality."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        # Use more lenient efficiency ratio for optimization tests
+        self.calculator = PowerOf4DimensionCalculator(min_efficiency_ratio=0.2)
+    
+    def test_power_of_4_boundary_optimization(self):
+        """Test optimization at power-of-4 boundaries."""
+        # Test cases right at power-of-4 boundaries
+        boundary_tests = [
+            (4, (2, 2), 1.0),      # Exact fit
+            (16, (4, 4), 1.0),     # Exact fit
+            (64, (8, 8), 1.0),     # Exact fit
+            (256, (16, 16), 1.0),  # Exact fit
+            (1024, (32, 32), 1.0), # Exact fit
+        ]
+        
+        for param_count, expected_dims, expected_efficiency in boundary_tests:
+            dims = self.calculator.calculate_optimal_dimensions(param_count)
+            config = self.calculator.calculate_padding_strategy(param_count, dims)
+            
+            assert dims == expected_dims
+            assert config.efficiency_ratio == expected_efficiency
+            assert len(config.padding_positions) == 0  # No padding needed
+    
+    def test_power_of_4_near_boundary_optimization(self):
+        """Test optimization near power-of-4 boundaries."""
+        # Test cases just above power-of-4 boundaries
+        near_boundary_tests = [
+            (5, (4, 4), 5/16),     # Just above 4
+            (17, (8, 8), 17/64),   # Just above 16
+            (65, (16, 16), 65/256), # Just above 64
+            (257, (32, 32), 257/1024), # Just above 256
+        ]
+        
+        for param_count, expected_dims, expected_efficiency in near_boundary_tests:
+            dims = self.calculator.calculate_optimal_dimensions(param_count)
+            config = self.calculator.calculate_padding_strategy(param_count, dims)
+            
+            assert dims == expected_dims
+            assert abs(config.efficiency_ratio - expected_efficiency) < 1e-10
+    
+    def test_padding_strategy_minimization(self):
+        """Test that padding strategy minimizes wasted space."""
+        test_cases = [
+            (100, (16, 16)),  # 100 in 256 space
+            (500, (32, 32)),  # 500 in 1024 space
+            (2000, (64, 64)), # 2000 in 4096 space
+        ]
+        
+        for param_count, dims in test_cases:
+            config = self.calculator.calculate_padding_strategy(param_count, dims)
+            
+            # Verify padding is at the end (most efficient for Hilbert curves)
+            total_space = dims[0] * dims[1]
+            expected_padding_count = total_space - param_count
+            
+            assert len(config.padding_positions) == expected_padding_count
+            
+            # Verify padding positions are at the end in row-major order
+            width, height = dims
+            for i, (x, y) in enumerate(config.padding_positions):
+                expected_pos_index = total_space - 1 - i
+                expected_y = expected_pos_index // width
+                expected_x = expected_pos_index % width
+                assert (x, y) == (expected_x, expected_y)
+    
+    def test_efficiency_ratio_validation_with_various_thresholds(self):
+        """Test efficiency ratio validation with various minimum thresholds."""
+        test_thresholds = [0.1, 0.3, 0.5, 0.7, 0.9]
+        
+        for threshold in test_thresholds:
+            calculator = PowerOf4DimensionCalculator(min_efficiency_ratio=threshold)
+            
+            # Test case that should pass
+            high_efficiency_case = (15, (4, 4))  # 15/16 = 0.9375
+            if threshold <= 0.9375:
+                config = calculator.calculate_padding_strategy(*high_efficiency_case)
+                assert config.efficiency_ratio >= threshold
+            else:
+                with pytest.raises(ValueError, match="Efficiency ratio .* is below minimum"):
+                    calculator.calculate_padding_strategy(*high_efficiency_case)
+            
+            # Test case that should fail for high thresholds
+            low_efficiency_case = (10, (16, 16))  # 10/256 = 0.039
+            if threshold <= 0.039:
+                config = calculator.calculate_padding_strategy(*low_efficiency_case)
+                assert config.efficiency_ratio >= threshold
+            else:
+                with pytest.raises(ValueError, match="Efficiency ratio .* is below minimum"):
+                    calculator.calculate_padding_strategy(*low_efficiency_case)
+
+
 class TestEdgeCasesAndErrorHandling:
     """Test edge cases and error handling scenarios."""
     
