@@ -38,15 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Handling**: Improved error handling and validation throughout the system
 - **Documentation**: Extensive documentation and examples for all RAG features
 
-## [1.2.0] - 2024-11-XX
+## [1.2.0] - 2024-11-XX (Deprecated)
 
-### Added
-- **Video Storage & AI Model Integration**: Video frame storage with temporal coherence optimization
-- **HuggingFace Model Integration**: Direct model support with parameter extraction and encoding
-- **Streaming Processing Engine**: Memory-efficient processing for large models
-- **Computer Vision Search**: ORB features, template matching, histogram comparison, and SSIM analysis
-- **Hybrid Search Algorithms**: Weighted combination of video features and hierarchical indices
-- **Model Registry**: Track encoded models with metadata and similarity search
+### Note
+Version 1.2.0 features (video storage, HuggingFace integration, streaming processing) have been removed in v1.3.0 in favor of the comprehensive RAG system.
 
 ## [1.1.0] - 2024-11-XX
 

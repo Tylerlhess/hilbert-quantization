@@ -9,28 +9,16 @@
 
 Hilbert Quantization is a high-performance similarity search library that combines Hilbert curve mapping with MPEG-AI compression to deliver both speed and storage efficiency. It's designed for applications where both search performance and storage costs matter.
 
-## 🆕 **New in v1.2.0: Video Storage & AI Model Integration**
+## 🆕 **New in v1.3.0: Complete RAG System**
 
-### 🎬 **Video-Enhanced Storage System**
-- **Video Frame Storage**: Store multiple models as video frames with temporal coherence optimization
-- **Hierarchical Frame Ordering**: Automatic frame sorting based on hierarchical indices for 4-8% compression improvement
-- **Computer Vision Search**: ORB features, template matching, histogram comparison, and SSIM analysis
-- **Hybrid Search Algorithms**: Weighted combination of video features (60%) and hierarchical indices (40%)
-- **Temporal Coherence Analysis**: Neighboring frame relationships for enhanced similarity detection
-
-### 🤗 **HuggingFace Model Integration**
-- **Direct Model Support**: Extract and encode parameters from any HuggingFace Transformers model
-- **Stratified Sampling**: Handle large models with intelligent parameter sampling strategies
-- **Model Registry**: Track encoded models with metadata, architecture detection, and similarity search
-- **Cross-Architecture Search**: Find similar models across different neural network architectures
-- **Real-time Encoding**: Stream parameters directly from HuggingFace Hub without full model loading
-
-### 🌊 **Streaming Processing Engine**
-- **Memory-Efficient Processing**: Process models larger than available RAM with constant O(1) memory usage
-- **Layer-by-Layer Streaming**: Extract parameters by layer type (attention, MLP, embeddings) without loading full models
-- **Chunk-Based Encoding**: Encode parameter chunks as separate video frames with proper indexing
-- **Progress Tracking**: Real-time monitoring of parameter counts, processing rates, and encoding progress
-- **Resume Capability**: Continue interrupted encoding processes from last checkpoint
+### 📚 **Retrieval-Augmented Generation (RAG) System**
+- **Document Processing Pipeline**: Comprehensive document chunking, metadata management, and IPFS integration
+- **Advanced Embedding Generation**: Hierarchical index embedding with compression and reconstruction capabilities
+- **Dual Video Storage**: Synchronized embedding and document storage with frame-based retrieval
+- **Progressive Search Engine**: Multi-stage search with frame caching and similarity calculation
+- **Batch Document Processing**: High-performance parallel processing with progress tracking
+- **Document Validation**: Comprehensive validation with metadata verification and content analysis
+- **End-to-End Pipeline**: Complete workflow from document ingestion to search results
 
 ## 🚀 Key Features
 
@@ -61,9 +49,6 @@ pip install hilbert-quantization
 ### Optional Dependencies
 
 ```bash
-# For HuggingFace model support
-pip install hilbert-quantization[huggingface]
-
 # For benchmarking and visualization
 pip install hilbert-quantization[benchmark]
 
@@ -74,7 +59,7 @@ pip install hilbert-quantization[gpu]
 pip install hilbert-quantization[dev]
 
 # Complete installation with all features
-pip install hilbert-quantization[dev,huggingface,benchmark,gpu]
+pip install hilbert-quantization[dev,benchmark,gpu]
 ```
 
 ## 🚀 Quick Start
@@ -110,105 +95,98 @@ for result in results:
     print(f"Similarity: {result.similarity_score:.3f}")
 ```
 
-### 🎬 Video Storage with Temporal Optimization
+### 📚 RAG System Usage
 
-Store multiple models as video frames with intelligent ordering for optimal compression:
-
-```python
-from hilbert_quantization.video_api import VideoHilbertQuantizer
-from hilbert_quantization.core.video_storage import VideoModelStorage
-
-# Initialize video storage system
-video_storage = VideoModelStorage(
-    storage_dir="model_videos",
-    frame_rate=30.0,
-    max_frames_per_video=1000,
-    video_codec='h264'
-)
-
-# Initialize video quantizer
-quantizer = VideoHilbertQuantizer(video_storage=video_storage)
-
-# Add models (automatically ordered by hierarchical indices)
-models = ["bert-base-uncased", "distilbert-base-uncased", "roberta-base"]
-for model_name in models:
-    quantized_model = quantizer.encode_huggingface_model(model_name)
-    frame_metadata = video_storage.add_model(quantized_model)
-    print(f"Added {model_name} as frame {frame_metadata.frame_index}")
-
-# Optimize existing video for better compression
-video_path = "path/to/existing/video.mp4"
-optimization_results = video_storage.optimize_frame_ordering(video_path)
-print(f"Compression improvement: {optimization_results['compression_improvement_percent']:.2f}%")
-```
-
-### 🤗 HuggingFace Model Integration
-
-Extract and encode parameters from any HuggingFace model with intelligent sampling:
+Build a complete RAG system with document processing and similarity search:
 
 ```python
-from hilbert_quantization.huggingface_integration import HuggingFaceParameterExtractor
-from hilbert_quantization.video_api import VideoHilbertQuantizer
+from hilbert_quantization.rag import RAGSystem, RAGConfig
+from hilbert_quantization.rag.document_processing import DocumentChunker
+from hilbert_quantization.rag.embedding_generation import EmbeddingGenerator
 
-# Initialize extractor and quantizer
-extractor = HuggingFaceParameterExtractor()
-quantizer = VideoHilbertQuantizer()
-
-# Extract parameters with stratified sampling
-result = extractor.extract_model_parameters(
-    model_name="bert-base-uncased",
-    max_params=50000,  # Limit for demonstration
-    include_embeddings=True,
-    include_attention=True,
-    include_mlp=True,
-    stratified_sampling=True  # Maintain representativeness
+# Initialize RAG system
+config = RAGConfig(
+    chunk_size=512,
+    overlap_size=50,
+    embedding_dimension=1024,
+    max_frames_per_video=1000
 )
 
-print(f"Extracted {len(result.parameters):,} parameters from {result.original_parameter_count:,}")
-print(f"Sampling applied: {result.sampling_applied}")
+rag_system = RAGSystem(config)
 
-# Encode to video format
-quantized_model = quantizer.quantize(
-    result.parameters,
-    model_id=result.metadata.model_name
-)
+# Process documents
+documents = [
+    "This is the first document about machine learning.",
+    "This document discusses natural language processing.",
+    "Here we talk about computer vision and image recognition."
+]
 
-print(f"Compression ratio: {len(result.parameters) * 4 / len(quantized_model.compressed_data):.2f}x")
+# Add documents to the system
+for i, doc in enumerate(documents):
+    document_id = f"doc_{i}"
+    rag_system.add_document(document_id, doc)
+
+# Search for similar content
+query = "machine learning algorithms"
+results = rag_system.search(query, max_results=5)
+
+# Print results
+for result in results:
+    print(f"Document: {result.document_id}")
+    print(f"Similarity: {result.similarity_score:.3f}")
+    print(f"Content: {result.content[:100]}...")
 ```
 
-### 🌊 Streaming Processing for Large Models
+### 🔍 Advanced RAG Features
 
-Process models larger than available memory with constant memory usage:
+Use advanced document processing and embedding generation:
 
 ```python
-from hilbert_quantization.core.streaming_processor import StreamingHuggingFaceEncoder
+from hilbert_quantization.rag.document_processing import BatchDocumentProcessor
+from hilbert_quantization.rag.embedding_generation import HierarchicalIndexGenerator
+from hilbert_quantization.rag.search import ProgressiveSearchEngine
 
-# Initialize streaming encoder
-encoder = StreamingHuggingFaceEncoder(
-    video_storage_dir="streaming_models",
-    chunk_size=2048,  # Process in 2K parameter chunks
-    enable_progress=True
+# Initialize components
+batch_processor = BatchDocumentProcessor(
+    chunk_size=512,
+    overlap_size=50,
+    parallel_workers=4
 )
 
-# Stream and encode large model without loading into memory
-result = encoder.stream_encode_model(
-    model_name="microsoft/DialoGPT-large",
-    target_layers=["attention", "mlp"],  # Filter specific layer types
-    max_total_params=100000,  # Limit total parameters
-    chunk_encoding=True  # Encode each chunk as separate frame
+embedding_generator = EmbeddingGenerator(
+    dimension=1024,
+    use_compression=True
 )
 
-print(f"Streamed {result['parameter_count']:,} parameters in {result['chunks_encoded']} chunks")
-print(f"Encoding time: {result['encoding_time']:.2f}s")
-print(f"Processing rate: {result['parameter_count'] / result['encoding_time']:.0f} params/sec")
+search_engine = ProgressiveSearchEngine(
+    use_frame_caching=True,
+    cache_size=1000
+)
 
-# Monitor streaming progress
-for chunk, layer_info, progress in encoder.stream_model_parameters("gpt2", max_total_params=50000):
-    print(f"Processing {progress.current_layer}: {progress.progress_percent:.1f}% complete")
-    # Process chunk in real-time without storing full model
+# Process large document collection
+documents = load_document_collection("path/to/documents/")
+processed_docs = batch_processor.process_documents(documents)
+
+# Generate embeddings with hierarchical indices
+for doc in processed_docs:
+    embedding = embedding_generator.generate_embedding(doc.content)
+    doc.embedding = embedding
+
+# Add to search engine
+for doc in processed_docs:
+    search_engine.add_document(doc)
+
+# Perform similarity search
+query = "What is machine learning?"
+results = search_engine.search(query, max_results=10)
+
+print(f"Found {len(results)} relevant documents")
+for result in results:
+    print(f"Document: {result.document_id}")
+    print(f"Similarity: {result.similarity_score:.3f}")
 ```
 
-### 🆕 Streaming Optimization
+### 🔧 Streaming Optimization
 
 For large datasets or memory-constrained environments:
 
@@ -234,67 +212,38 @@ print(f"Processed {large_params.size:,} parameters with constant memory usage")
 print(f"Compression ratio: {quantized.metadata.compression_ratio:.2f}x")
 ```
 
-### 🔍 Hybrid Search with Computer Vision
+### 📊 Document Validation and Metrics
 
-Combine video features with hierarchical indices for superior similarity detection:
+Ensure document quality and track performance:
 
 ```python
-from hilbert_quantization.core.video_search import VideoEnhancedSearchEngine
-from hilbert_quantization.core.video_storage import VideoModelStorage
+from hilbert_quantization.rag.validation import DocumentValidator, RAGValidator
+from hilbert_quantization.rag.document_processing import MetadataManager
 
-# Initialize video storage and search engine
-video_storage = VideoModelStorage("model_videos")
-search_engine = VideoEnhancedSearchEngine(
-    video_storage=video_storage,
-    use_parallel_processing=True,
-    max_workers=4
-)
+# Initialize validation components
+doc_validator = DocumentValidator()
+rag_validator = RAGValidator()
+metadata_manager = MetadataManager()
 
-# Perform hybrid search combining multiple methods
-query_model = quantizer.encode_huggingface_model("bert-base-uncased")
+# Validate documents before processing
+for doc in documents:
+    validation_result = doc_validator.validate_document(doc)
+    if validation_result.is_valid:
+        # Add metadata
+        metadata = metadata_manager.extract_metadata(doc)
+        doc.metadata = metadata
+        
+        # Process document
+        processed_doc = rag_system.add_document(doc.id, doc.content)
+        print(f"Added document {doc.id} with {len(processed_doc.chunks)} chunks")
+    else:
+        print(f"Document {doc.id} failed validation: {validation_result.errors}")
 
-# Method 1: Video features only (computer vision algorithms)
-video_results = search_engine.search_similar_models(
-    query_model, 
-    max_results=10, 
-    search_method='video_features'
-)
-
-# Method 2: Hierarchical indices only (fast filtering)
-hierarchical_results = search_engine.search_similar_models(
-    query_model, 
-    max_results=10, 
-    search_method='hierarchical'
-)
-
-# Method 3: Hybrid approach (best accuracy)
-hybrid_results = search_engine.search_similar_models(
-    query_model, 
-    max_results=10, 
-    search_method='hybrid',
-    use_temporal_coherence=True  # Analyze neighboring frames
-)
-
-# Compare search methods
-comparison = search_engine.compare_search_methods(
-    query_model, 
-    max_results=10,
-    methods=['hierarchical', 'video_features', 'hybrid']
-)
-
-print(f"Fastest method: {comparison['analysis']['fastest_method']}")
-print(f"Most accurate: {comparison['analysis']['most_accurate_method']}")
-
-# Analyze individual similarity components
-for result in hybrid_results:
-    print(f"Model: {result.frame_metadata.model_id}")
-    print(f"  Video similarity: {result.video_similarity_score:.3f}")
-    print(f"  Hierarchical similarity: {result.hierarchical_similarity_score:.3f}")
-    print(f"  Combined score: {result.similarity_score:.3f}")
-    print(f"  Temporal coherence: {result.temporal_coherence_score:.3f}")
-```
-
-#### Computer Vision Features
+# Validate RAG system performance
+performance_metrics = rag_validator.validate_system_performance(rag_system)
+print(f"Search accuracy: {performance_metrics.search_accuracy:.3f}")
+print(f"Retrieval speed: {performance_metrics.avg_retrieval_time:.2f}ms")
+print(f"Compression ratio: {performance_metrics.compression_ratio:.2f}x")
 
 - **ORB Keypoint Detection**: Structural feature matching between model representations
 - **Template Matching**: Direct pattern correlation for similar model architectures  

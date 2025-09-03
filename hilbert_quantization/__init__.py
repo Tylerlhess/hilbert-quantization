@@ -53,18 +53,8 @@ from .video_api import (
 # Streaming index generator for memory-efficient processing
 from .core.streaming_index_builder import StreamingHilbertIndexGenerator
 
-# Hugging Face integration (optional import)
-try:
-    from .huggingface_integration import (
-        HuggingFaceParameterExtractor,
-        HuggingFaceModelMetadata,
-        ParameterExtractionResult,
-        extract_huggingface_parameters,
-        get_huggingface_model_info,
-    )
-    _HUGGINGFACE_AVAILABLE = True
-except ImportError:
-    _HUGGINGFACE_AVAILABLE = False
+# HuggingFace integration removed in v1.3.0
+_HUGGINGFACE_AVAILABLE = False
 
 # Configuration imports
 from .config import (
@@ -168,15 +158,7 @@ if _OPTIMIZED_AVAILABLE:
         "UltraFastHierarchicalSearch",
     ])
 
-# Add Hugging Face components if available
-if _HUGGINGFACE_AVAILABLE:
-    __all__.extend([
-        "HuggingFaceParameterExtractor",
-        "HuggingFaceModelMetadata",
-        "ParameterExtractionResult",
-        "extract_huggingface_parameters",
-        "get_huggingface_model_info",
-    ])
+# HuggingFace components removed in v1.3.0
 
 
 def get_version() -> str:

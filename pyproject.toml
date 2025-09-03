@@ -7,7 +7,7 @@ name = "hilbert-quantization"
 version = "1.3.0"
 description = "Ultra-fast similarity search with Hilbert curve quantization and MPEG-AI compression"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "MIT"
 authors = [
     {name = "Tyler Hess", email = "tylerlhess@gmail.com"}
 ]
@@ -29,7 +29,7 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -65,11 +65,7 @@ gpu = [
     "cupy-cuda11x>=9.0.0; platform_machine=='x86_64'",
     "numba>=0.56.0",
 ]
-huggingface = [
-    "transformers>=4.20.0",
-    "torch>=1.12.0",
-    "huggingface_hub>=0.10.0",
-]
+# HuggingFace dependencies removed in v1.3.0
 
 [project.urls]
 Homepage = "https://github.com/tylerlhess/hilbert-quantization"
